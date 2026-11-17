@@ -15,8 +15,12 @@ const server = new McpServer({ name: "capcut-coedit", version: "0.1.0" });
 
 server.tool(
   "research_trends",
-  "Search the live web via You.com for what's trending on a topic. Use before writing a script.",
-  { query: z.string(), count: z.number().int().min(1).max(20).optional(), freshness: z.string().optional() },
+  "Search the live web via You.com: what's trending on a topic, or evidence for a specific claim. Use before writing a script, and cite the result URLs as caption sources.",
+  {
+    query: z.string(),
+    count: z.number().int().min(1).max(20).optional(),
+    freshness: z.string().optional().describe("day | week | month | year | YYYY-MM-DDtoYYYY-MM-DD"),
+  },
   async ({ query, count, freshness }) => text(await research(query, { count, freshness })),
 );
 
@@ -62,6 +66,10 @@ const caption = z.object({
   y: z.number().min(-1).max(1).optional().describe("vertical position: -1 bottom, 0 center, 1 top (default -0.75)"),
   size: z.number().positive().optional().describe("font size (default 12; ~18 for a hook)"),
   color: z.array(z.number().min(0).max(1)).length(3).optional().describe("RGB 0-1"),
+  source: z
+    .object({ url: z.string().url(), title: z.string().optional() })
+    .optional()
+    .describe("Where this claim comes from (a research_trends result). Shown on screen as a small credit and saved to the project's source list. Required for any factual claim."),
 });
 const safe = (fn) => async (args) => {
   try {
@@ -75,20 +83,28 @@ server.tool("capcut_list_drafts", "List the CapCut projects on this machine (nam
   safe(() => capcut.listDrafts()));
 
 server.tool("capcut_read_draft", "Read a CapCut project's tracks and segments (text, timing, ids).", { name: z.string() },
-  safe(({ name }) => capcut.readDraft(name)));
+  safe(async ({ name }) => ({ ...(await capcut.readDraft(name)), sources: await capcut.readSources(name) })));
 
 server.tool(
   "capcut_create_draft",
   "Create a NEW CapCut project with timed captions. It shows up on CapCut's home screen (restart CapCut if it doesn't).",
   { name: z.string(), vertical: z.boolean().optional().describe("9:16 (default) or 16:9"), captions: z.array(caption) },
-  safe(({ name, vertical, captions }) => capcut.createDraft(name, { vertical, captions })),
+  safe(async ({ name, vertical, captions }) => {
+    const cited = capcut.withCitations(captions);
+    const draft = await capcut.createDraft(name, { vertical, captions: cited.captions });
+    return { ...draft, sources: await capcut.saveSources(name, cited.sources) };
+  }),
 );
 
 server.tool(
   "capcut_add_captions",
   "Add timed captions to an existing CapCut project. The project must be closed in CapCut.",
   { name: z.string(), captions: z.array(caption) },
-  safe(({ name, captions }) => capcut.updateDraft(name, async (d) => { for (const c of captions) await capcut.addTextRaw(d, c); })),
+  safe(async ({ name, captions }) => {
+    const cited = capcut.withCitations(captions);
+    const draft = await capcut.updateDraft(name, async (d) => { for (const c of cited.captions) await capcut.addTextRaw(d, c); });
+    return { ...draft, sources: await capcut.saveSources(name, cited.sources) };
+  }),
 );
 
 server.tool(

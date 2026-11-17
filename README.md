@@ -7,7 +7,8 @@ Claude Code plugin: build CapCut-style drafts grounded in live web trends (You.c
 - **MCP server** (`src/server.js`): `research_trends`, `capcut_list_drafts`, `capcut_read_draft`, `capcut_create_draft`, `capcut_add_captions`, `capcut_edit_text`, `capcut_remove_segment`, plus the portable draft tools (`create_draft`, `get_draft`, `add_text`, `add_marker`).
 - **Skill**: `skills/capcut-creator`
 - **Multiplayer** (`src/syncdoc.js`, `src/hub.js`, `src/sync.js`): several people co-edit one CapCut project. Segments merge last-writer-wins per segment, deletes propagate, and two people adding in the same spot both keep their work. Covered by an end-to-end test with two simulated peers (`npm test`). Not yet tried on two real machines.
-- **Unverified:** the You.com endpoint in `src/youcom.js` was written from memory; confirm against You.com docs. Only text is supported so far (no video/audio clips, no markers in CapCut).
+- **You.com research** (`src/youcom.js`): live web search through the You.com Search API. Captions can carry a `source`; it is shown on screen as a small credit and saved to the project's source list (`coedit_sources.json`).
+- **Limits:** only text is supported so far (no video/audio clips, no markers in CapCut).
 
 ## Run
 ```bash

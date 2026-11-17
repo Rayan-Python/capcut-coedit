@@ -248,3 +248,36 @@ export async function updateDraft(name, mutate) {
   await writeMeta(name, d);
   return summarizeRaw(d, name);
 }
+
+// ---- citations -----------------------------------------------------------
+
+const domain = (url) => new URL(url).hostname.replace(/^www\./, "");
+
+/**
+ * Expand captions that carry a `source` ({ url, title? }) into the caption plus
+ * a small on-screen credit shown for the same time range, so every factual
+ * claim is visibly sourced. Returns { captions, sources }.
+ */
+export function withCitations(captions) {
+  const out = [];
+  const sources = [];
+  for (const { source, ...c } of captions) {
+    out.push(c);
+    if (!source?.url) continue;
+    out.push({ text: `Source: ${domain(source.url)}`, start: c.start, duration: c.duration, y: -0.92, size: 5, color: [0.75, 0.75, 0.75] });
+    sources.push({ caption: c.text, startSec: c.start, url: source.url, title: source.title ?? null });
+  }
+  return { captions: out, sources };
+}
+
+const sourcesFile = (name) => join(dir(name), "coedit_sources.json");
+
+/** Sources live in a sidecar file in the project folder, appended on each write. */
+export async function saveSources(name, sources) {
+  if (!sources.length) return [];
+  const all = [...(await readSources(name)), ...sources];
+  await writeFile(sourcesFile(name), JSON.stringify(all, null, 1));
+  return all;
+}
+
+export const readSources = (name) => readJson(sourcesFile(name)).catch(() => []);
