@@ -1,0 +1,8 @@
+{
+  "name": "capcut-coedit",
+  "version": "0.1.0",
+  "description": "Ground CapCut drafts in live web trends (You.com) and co-edit them with others.",
+  "mcpServers": {
+    "capcut-coedit": { "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/src/server.js"], "env": { "YDC_API_KEY": "${YDC_API_KEY}" } }
+  }
+}
